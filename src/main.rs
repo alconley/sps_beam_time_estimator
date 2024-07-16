@@ -41,7 +41,11 @@ fn main() {
             .start(
                 "the_canvas_id",
                 web_options,
-                Box::new(|cc| Ok(Box::new(sps_beam_time_estimator::BeamTimeApp::new(cc, false)))),
+                Box::new(|cc| {
+                    Ok(Box::new(sps_beam_time_estimator::BeamTimeApp::new(
+                        cc, false,
+                    )))
+                }),
             )
             .await;
 
