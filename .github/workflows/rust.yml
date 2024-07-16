@@ -71,7 +71,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check --edition 2021
+          args: --all -- --check
 
   clippy:
     name: Clippy
