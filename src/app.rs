@@ -1,109 +1,160 @@
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
-    // Example stuff:
-    label: String,
+use eframe::egui::{self};
+use eframe::App;
 
-    #[serde(skip)] // This how you opt-out of serialization of a field
-    value: f32,
+const CHARGE: f64 = 1.6e-19; // Elementary charge in C
+const NA: f64 = 6.023e23; // Avogadro's number
+
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+struct RunTimeSettings {
+    cross_section: f64,     // µb/sr
+    target_density: f64,    // µg/cm^2
+    target_molar_mass: f64, // g/mol
+    beam_current: f64,      // nA
+    z_beam: i32,            // proton number
+    slit_settings: f64,     // msr
+    desired_counts: i64,    // counts
+    time_s: f64,            // seconds
+    time_h: f64,            // hours
+    time_d: f64,            // days
 }
 
-impl Default for TemplateApp {
-    fn default() -> Self {
+impl RunTimeSettings {
+    pub fn new() -> Self {
         Self {
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            cross_section: 100.0,
+            target_density: 100.0,
+            target_molar_mass: 240.0,
+            beam_current: 20.0,
+            z_beam: 1,
+            slit_settings: 4.62,
+            desired_counts: 1000,
+            time_s: 0.0,
+            time_h: 0.0,
+            time_d: 0.0,
         }
     }
+
+    fn calculate_beam_time(&mut self) {
+        let slits_sr = self.slit_settings * 1e-3; // msr to sr
+        let target_density = self.target_density * 1e-6; // µg/cm^2 to g/cm^2
+        let beam_current = self.beam_current * 1e-9; // nA to A
+        let f_target = (target_density * NA) / (self.target_molar_mass) * (1e-24) * (1e-6);
+
+        let run_time_s = (self.z_beam as f64 * CHARGE * self.desired_counts as f64)
+            / (self.cross_section * f_target * slits_sr * beam_current);
+
+        self.time_s = run_time_s;
+        self.time_h = run_time_s / 3600.0;
+        self.time_d = self.time_h / 24.0;
+    }
 }
 
-impl TemplateApp {
-    /// Called once before the first frame.
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+pub struct BeamTimeApp {
+    settings: RunTimeSettings,
+    window: bool,
+}
 
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+impl BeamTimeApp {
+    pub fn new(_cc: &eframe::CreationContext<'_>, window: bool) -> Self {
+        Self {
+            settings: RunTimeSettings::new(),
+            window,
         }
+    }
 
-        Default::default()
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        egui::Grid::new("runtime_settings_grid")
+            .num_columns(2)
+            .spacing(egui::vec2(8.0, 4.0))
+            .striped(true)
+            .show(ui, |ui| {
+
+            ui.label("Cross Section:");
+
+                // Display and adjust the cross section as microbarns
+            ui.add(
+                egui::DragValue::new(&mut self.settings.cross_section)
+                    .speed(1.0)
+                    .suffix(" µb/sr")
+                    .range(0.0..=f64::INFINITY)
+                );
+            ui.end_row();
+
+
+            ui.label("Target Density:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.target_density)
+                    .speed(1.0)
+                    .suffix(" µg/cm^2")
+                    .range(0.0..=f64::INFINITY)
+            );
+            ui.end_row();
+
+            ui.label("Target Molar Mass:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.target_molar_mass)
+                    .speed(1.0)
+                    .suffix(" g/mol")
+                    .range(0.0..=f64::INFINITY)
+            );
+            ui.end_row();
+
+            ui.label("Beam Current:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.beam_current)
+                    .speed(1.0)
+                    .suffix(" nA")
+                    .range(0.0..=f64::INFINITY)
+            ).on_hover_text("Beam current on target.");
+            ui.end_row();
+
+            ui.label("Z Beam:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.z_beam)
+                    .speed(1.0)
+                    .prefix("Z = ")
+                    .range(1..=118) // Adjusted to allow minimum 1
+            ).on_hover_text("Proton number of the beam.");
+            ui.end_row();
+
+            ui.label("Slit Settings:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.slit_settings)
+                    .speed(0.1)
+                    .suffix(" msr")
+                    .range(0.0..=12.8)
+            ).on_hover_text("Solid angle of the SE-SPS. Typical value is 4.62 msr. The SE-SPS has a max solid angle of 12.8 msr.");
+            ui.end_row();
+
+            ui.label("Desired Counts:");
+            ui.add(
+                egui::DragValue::new(&mut self.settings.desired_counts)
+                    .speed(1.0)
+                    .suffix(" counts")
+                    .range(0..=i64::MAX)
+            ).on_hover_text("The desired number of counts in the peak of interest.");
+            ui.end_row();
+
+            // Call calculate_beam_time here if it should happen automatically upon any change
+            self.settings.calculate_beam_time();
+            ui.label("Estimated Time:");
+            ui.label(format!("{:.0} s | {:.2} h | {:.2} d", self.settings.time_s, self.settings.time_h, self.settings.time_d));
+            ui.end_row();
+        });
     }
 }
 
-impl eframe::App for TemplateApp {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
+impl App for BeamTimeApp {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+        if self.window {
+            egui::Window::new("Beam Time Estimator").show(ctx, |ui| {
+                self.ui(ui);
+            });
+        } else {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                self.ui(ui);
+            });
+        }
     }
-
-    /// Called each time the UI needs repainting, which may be many times per second.
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-
-            egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    ui.add_space(16.0);
-                }
-
-                egui::widgets::global_dark_light_mode_buttons(ui);
-            });
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
-
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
-            });
-
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
-            }
-
-            ui.separator();
-
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/main/",
-                "Source code."
-            ));
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                powered_by_egui_and_eframe(ui);
-                egui::warn_if_debug_build(ui);
-            });
-        });
-    }
-}
-
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
 }

@@ -843,19 +843,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eframe_template"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "env_logger",
- "log",
- "serde",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "egui"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2334,6 +2321,19 @@ checksum = "9f7916fc008ca5542385b89a3d3ce689953c143e9304a9bf8beec1de48994c0d"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "sps_beam_time_estimator"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "env_logger",
+ "log",
+ "serde",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

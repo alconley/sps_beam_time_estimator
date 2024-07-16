@@ -18,9 +18,13 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "eframe template",
+        "Beam Time Estimator",
         native_options,
-        Box::new(|cc| Ok(Box::new(eframe_template::TemplateApp::new(cc)))),
+        Box::new(|cc| {
+            Ok(Box::new(sps_beam_time_estimator::BeamTimeApp::new(
+                cc, false,
+            )))
+        }),
     )
 }
 
@@ -37,12 +41,12 @@ fn main() {
             .start(
                 "the_canvas_id",
                 web_options,
-                Box::new(|cc| Ok(Box::new(eframe_template::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(sps_beam_time_estimator::BeamTimeApp::new(cc, false)))),
             )
             .await;
 
         // Remove the loading text and spinner:
-        let loading_text = web_sys::window()
+        let loading_text = eframe::web_sys::window()
             .and_then(|w| w.document())
             .and_then(|d| d.get_element_by_id("loading_text"));
         if let Some(loading_text) = loading_text {
