@@ -1,13 +1,32 @@
 use super::cebra::CeBrARunTimeSettings;
+use super::icespice::ICESPICERunTimeSettings;
 use super::sps::SPSRunTimeSettings;
 use eframe::egui::{self};
 use eframe::App;
 
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct BeamTimeApp {
     sps_settings: SPSRunTimeSettings,
     cebra_settings: CeBrARunTimeSettings,
+    icespice_settings: ICESPICERunTimeSettings,
+    show_sps: bool,
+    show_cebra: bool,
+    show_icespice: bool,
     window: bool,
+}
+
+impl Default for BeamTimeApp {
+    fn default() -> Self {
+        Self {
+            sps_settings: SPSRunTimeSettings::default(),
+            cebra_settings: CeBrARunTimeSettings::default(),
+            icespice_settings: ICESPICERunTimeSettings::default(),
+            show_sps: true,
+            show_cebra: true,
+            show_icespice: true,
+            window: false,
+        }
+    }
 }
 
 impl BeamTimeApp {
@@ -23,15 +42,30 @@ impl BeamTimeApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
+        egui::menu::bar(ui, |ui| {
+            ui.menu_button("View", |ui| {
+                ui.checkbox(&mut self.show_sps, "Show SPS Estimator");
+                ui.checkbox(&mut self.show_cebra, "Show CeBrA Estimator");
+                ui.checkbox(&mut self.show_icespice, "Show ICESPICE Estimator");
+            });
+        });
+
         egui::SidePanel::left("sps_panel")
             .resizable(false)
-            .show_inside(ui, |ui| {
+            .show_animated_inside(ui, self.show_sps, |ui| {
                 self.sps_settings.ui(ui);
             });
+
         egui::SidePanel::left("cebra_panel")
             .resizable(false)
-            .show_inside(ui, |ui| {
+            .show_animated_inside(ui, self.show_cebra, |ui| {
                 self.cebra_settings.ui(ui);
+            });
+
+        egui::SidePanel::left("icespice_panel")
+            .resizable(false)
+            .show_animated_inside(ui, self.show_icespice, |ui| {
+                self.icespice_settings.ui(ui);
             });
     }
 }

@@ -18,28 +18,28 @@ impl Efficiency {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         ui.add(
             egui::DragValue::new(&mut self.a)
-                .prefix("a = ")
+                // .prefix("a = ")
                 .speed(0.1)
                 .range(0.0..=f64::INFINITY),
         )
         .on_hover_text("Efficiency = a * exp(-energy / b) + c * exp(-energy / d)");
         ui.add(
             egui::DragValue::new(&mut self.b)
-                .prefix("b = ")
+                // .prefix("b = ")
                 .speed(10.0)
                 .range(0.0..=f64::INFINITY),
         )
         .on_hover_text("Efficiency = a * exp(-energy / b) + c * exp(-energy / d)");
         ui.add(
             egui::DragValue::new(&mut self.c)
-                .prefix("c = ")
+                // .prefix("c = ")
                 .speed(0.1)
                 .range(0.0..=f64::INFINITY),
         )
         .on_hover_text("Efficiency = a * exp(-energy / b) + c * exp(-energy / d)");
         ui.add(
             egui::DragValue::new(&mut self.d)
-                .prefix("d = ")
+                // .prefix("d = ")
                 .speed(10.0)
                 .range(0.0..=f64::INFINITY),
         )
@@ -53,7 +53,7 @@ pub struct Detector {
     pub efficiency: Efficiency,
 }
 
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Decay {
     pub energy: f64,
     pub absolute_intensity: f64,
@@ -61,16 +61,37 @@ pub struct Decay {
     pub efficiency_corrected_counts: f64,
 }
 
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+impl Default for Decay {
+    fn default() -> Self {
+        Self {
+            energy: 2000.0,
+            absolute_intensity: 100.0,
+            efficiency: 0.0,
+            efficiency_corrected_counts: 0.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct CeBrARunTimeSettings {
     n_particle_counts: i64,
     decay: Decay,
+    detectors: Vec<Detector>,
+}
+
+impl Default for CeBrARunTimeSettings {
+    fn default() -> Self {
+        Self {
+            n_particle_counts: 10000,
+            decay: Decay::default(),
+            detectors: vec![],
+        }
+    }
 }
 
 impl CeBrARunTimeSettings {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         egui::Grid::new("cebra_runtime_settings_grid")
-            .num_columns(2)
             .striped(true)
             .show(ui, |ui| {
                 ui.heading("CeBrA");
@@ -93,21 +114,11 @@ impl CeBrARunTimeSettings {
                 ui.add(
                     egui::DragValue::new(&mut self.decay.energy)
                         .suffix(" keV")
-                        .speed(1.0)
+                        .speed(10.0)
                         .range(0.0..=f64::INFINITY),
                 );
                 ui.add(
                     egui::DragValue::new(&mut self.decay.absolute_intensity)
-                        .suffix(" %")
-                        .speed(0.1)
-                        .range(0.0..=f64::INFINITY),
-                );
-
-                ui.end_row();
-
-                ui.label(format!("Efficiency at\n{} keV: ", self.decay.energy));
-                ui.add(
-                    egui::DragValue::new(&mut self.decay.efficiency)
                         .suffix(" %")
                         .speed(0.1)
                         .range(0.0..=100.0),
@@ -115,18 +126,97 @@ impl CeBrARunTimeSettings {
 
                 ui.end_row();
 
-                ui.label("Estimated Counts:").on_hover_text(
-                    "Estimated counts = Particle counts * Absolute intensity * Efficiency",
-                );
+                ui.heading("Detectors");
 
-                let estimated_counts =
-                    self.n_particle_counts as f64 * self.decay.absolute_intensity / 100.0
-                        * self.decay.efficiency
-                        / 100.0;
+                if ui.button("+").clicked() {
+                    self.detectors.push(Detector {
+                        name: format!("Detector {}", self.detectors.len() + 1),
+                        efficiency: Efficiency::default(),
+                    });
+                }
 
-                ui.label(format!("{:.2}", estimated_counts));
+                if ui.button("REU 2023").clicked() {
+                    self.detectors.push(Detector {
+                        name: "Detector 0".to_string(),
+                        efficiency: Efficiency::new(1.04342, 313.36388, 0.30550, 2796.19080),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 1".to_string(),
+                        efficiency: Efficiency::new(0.91597, 344.80832, 0.26477, 3074.53024),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 2".to_string(),
+                        efficiency: Efficiency::new(0.34643, 391.57405, 0.11673, 4392.80188),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 3".to_string(),
+                        efficiency: Efficiency::new(0.95401, 292.86782, 0.30357, 2592.23281),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 4".to_string(),
+                        efficiency: Efficiency::new(1.69550, 304.59392, 0.93590, 4628.69818),
+                    });
+                }
 
                 ui.end_row();
+
+                ui.label("Name");
+                ui.label("a");
+                ui.label("b");
+                ui.label("c");
+                ui.label("d");
+                ui.label("ε(γ)");
+                ui.label("Counts");
+                ui.label("");
+                ui.end_row();
+
+                let mut index_to_remove = None;
+
+                let mut total_efficiency = 0.0;
+                let mut total_counts = 0.0;
+                for (index, detector) in self.detectors.iter_mut().enumerate() {
+                    ui.text_edit_singleline(&mut detector.name);
+                    detector.efficiency.ui(ui);
+
+                    let efficiency = detector.efficiency.calculate_efficiency(self.decay.energy);
+                    ui.label(format!("{:.2} %", efficiency));
+
+                    let expected_counts =
+                        self.n_particle_counts as f64 * self.decay.absolute_intensity / 100.0
+                            * efficiency
+                            / 100.0;
+
+                    ui.label(format!("{:.0}", expected_counts)).on_hover_text(
+                        "Estimated counts = Particle counts * Absolute intensity [%] /100 * Efficiency [%] /100",
+                    );
+
+                    if ui.button("-").clicked() {
+                        index_to_remove = Some(index);
+                    }
+                    ui.end_row();
+
+                    total_efficiency += efficiency;
+                    total_counts += expected_counts;
+
+                }
+
+                if let Some(index) = index_to_remove {
+                    self.detectors.remove(index);
+                }
+
+                ui.label("");
+                ui.label("");
+                ui.label("");
+                ui.label("");
+                ui.label("Total");
+                ui.label(format!("{:.2} %", total_efficiency));
+                ui.label(format!("{:.0}", total_counts));
+                ui.end_row();
+
             });
     }
 }
