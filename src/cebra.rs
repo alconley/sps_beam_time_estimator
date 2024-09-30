@@ -135,7 +135,8 @@ impl CeBrARunTimeSettings {
                     });
                 }
 
-                if ui.button("REU 2023").clicked() {
+                if ui.button("REU-2023").on_hover_text("Efficiency values for the 52Cr(d,pγ)53Cr and 34S(d,pγ)35S experiments that took place in the summer of 2023 during the REU.").clicked() {
+                    self.detectors.clear();
                     self.detectors.push(Detector {
                         name: "Detector 0".to_string(),
                         efficiency: Efficiency::new(1.04342, 313.36388, 0.30550, 2796.19080),
@@ -161,6 +162,35 @@ impl CeBrARunTimeSettings {
                         efficiency: Efficiency::new(1.69550, 304.59392, 0.93590, 4628.69818),
                     });
                 }
+
+                if ui.button("Summer-2022").on_hover_text("Efficiency values for the 49Ti(d,pγ)50Ti and 61Ni(d,pγ)62Ni experiments that took place in the summer of 2022 during CeBrA's commissioning run.").clicked() {
+                    self.detectors.clear();
+                    self.detectors.push(Detector {
+                        name: "Detector 0".to_string(),
+                        efficiency: Efficiency::new(3.44699544e-01, 2.49383011e+03, 1.00560372e+00, 3.31802347e+02),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 1".to_string(),
+                        efficiency: Efficiency::new(3.31397563e-01, 2.57096172e+03, 1.01446003e+00, 3.45717989e+02),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 2".to_string(),
+                        efficiency: Efficiency::new(2.99597105e-01, 2.61859263e+03, 8.69973182e-01, 3.60128895e+02),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 3".to_string(),
+                        efficiency: Efficiency::new(3.19707493e-01, 2.37437634e+03, 8.53245327e-01, 3.39245613e+02),
+                    });
+
+                    self.detectors.push(Detector {
+                        name: "Detector 4".to_string(),
+                        efficiency: Efficiency::new(5.22246571e-01, 3.76416626e+03, 7.08680303e-01, 4.16212259e+02),
+                    });
+                }
+
 
                 ui.end_row();
 
