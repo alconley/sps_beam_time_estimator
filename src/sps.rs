@@ -66,6 +66,8 @@ impl SPSRunTimeSettings {
                         .suffix(" µb/sr")
                         .range(0.0..=f64::INFINITY)
                     );
+
+                ui.label(format!("{} mb/sr", self.cross_section * 1e-3));
                 ui.end_row();
 
 
