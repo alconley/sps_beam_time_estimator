@@ -60,14 +60,16 @@ impl SPSRunTimeSettings {
                 ui.label("Cross Section:");
 
                     // Display and adjust the cross section as microbarns
-                ui.add(
-                    egui::DragValue::new(&mut self.cross_section)
-                        .speed(1.0)
-                        .suffix(" µb/sr")
-                        .range(0.0..=f64::INFINITY)
-                    );
+                ui.horizontal( |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut self.cross_section)
+                            .speed(1.0)
+                            .suffix(" µb/sr")
+                            .range(0.0..=f64::INFINITY)
+                        );
 
-                ui.label(format!("{} mb/sr", self.cross_section * 1e-3));
+                    ui.label(format!("= {} mb/sr", self.cross_section * 1e-3));
+                });
                 ui.end_row();
 
 
